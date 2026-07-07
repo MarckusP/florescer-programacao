@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+  <title>Florescer 2026 · Programação</title>
+  <meta name="description" content="Programação do Congresso Florescer 2026. Escolha as palestras que você quer participar." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#5c1a33" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+  <!-- iOS full screen (standalone) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Florescer" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Splash inicial -->
+  <div id="splash" class="splash">
+    <div class="splash-flower">✿</div>
+    <div class="splash-title">Florescer</div>
+    <div class="splash-sub">2026 · Programação</div>
+  </div>
+
+  <!-- Cabeçalho fixo -->
+  <header class="app-header">
+    <div class="app-header-top">
+      <div class="brand">
+        <span class="brand-flower">✿</span>
+        <div>
+          <div class="brand-name">Florescer <span>2026</span></div>
+          <div class="brand-sub">14–16 Ago · Flórida</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-fullscreen" class="icon-btn" type="button" aria-label="Abrir em tela cheia" hidden>⛶</button>
+        <button id="tab-roteiro" class="mine-btn" type="button" aria-label="Meu roteiro">
+          <span class="heart">♥</span>
+          <span id="mine-count" class="mine-count">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Abas de dia -->
+    <nav id="day-tabs" class="day-tabs" aria-label="Dias do evento"></nav>
+  </header>
+
+  <!-- Conteúdo -->
+  <main id="app" class="app"></main>
+
+  <!-- Modal: abrir em tela cheia / instalar -->
+  <div id="install-modal" class="install-backdrop" hidden>
+    <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="install-title">
+      <div class="install-flower">✿</div>
+      <div id="install-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal: conflito de horário (Prosseguir / Voltar) -->
+  <div id="confirm-modal" class="install-backdrop" hidden>
+    <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <div class="install-flower">⏱</div>
+      <div id="confirm-body"></div>
+    </div>
+  </div>
+
+  <!-- Bottom sheet (detalhe da sessão / palestrante) -->
+  <div id="sheet-backdrop" class="sheet-backdrop" hidden>
+    <div id="sheet" class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-grip"></div>
+      <div id="sheet-content"></div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

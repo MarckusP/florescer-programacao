@@ -1,0 +1,32 @@
+/* Fontes auto-hospedadas — mesma tipografia da página principal do Florescer.
+   Playfair Display (títulos) + Lato (corpo). Subset latin (cobre português). */
+
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 400 900; /* variável: cobre 600/700/900 */
+  font-display: swap;
+  src: url("playfair.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("lato-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("lato-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("lato-900.woff2") format("woff2");
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Florescer 2026 · Programação",
+  "short_name": "Florescer",
+  "description": "Programação do Congresso Florescer 2026. Escolha as palestras que você quer participar.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#5c1a33",
+  "theme_color": "#5c1a33",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
