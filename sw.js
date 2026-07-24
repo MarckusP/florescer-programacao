@@ -1,5 +1,5 @@
 /* Florescer 2026 · Service Worker (offline-first) */
-const CACHE = "florescer-2026-v2";
+const CACHE = "florescer-2026-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -34,6 +34,19 @@ self.addEventListener("activate", (e) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
+  );
+});
+
+// Toque em uma notificação local: foca uma aba aberta do app ou abre uma nova.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./index.html");
+    })
   );
 });
 

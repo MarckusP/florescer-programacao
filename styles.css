@@ -101,6 +101,7 @@ body::before {
 }
 .icon-btn:active { background: hsl(0 0% 100% / .24); }
 .icon-btn[hidden] { display: none; }
+.icon-btn.active { background: var(--gold-grad); color: var(--wine-dark); border-color: transparent; }
 
 .mine-btn {
   position: relative; display: flex; align-items: center; gap: 7px;
@@ -190,6 +191,12 @@ body::before {
 .card-icon.pausa { background: hsl(36 85% 58% / .13); color: var(--gold-dark); }
 .card-icon.devocional { background: var(--coral-light); color: var(--coral); }
 .card-icon.louvor { background: hsl(330 55% 93%); color: var(--wine); }
+.card-icon.avatar, .s-icon.avatar {
+  background: var(--wine-grad); color: var(--gold-soft);
+  font-family: var(--font-display); font-weight: 700; letter-spacing: .02em;
+}
+.card-icon.avatar { font-size: 19px; }
+.s-icon.avatar { font-size: 26px; }
 
 .card-main { flex: 1; min-width: 0; padding-top: 1px; }
 .card-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; line-height: 1.22; color: var(--ink); letter-spacing: .005em; }

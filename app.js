@@ -6,6 +6,7 @@ const KIND_ICON = {
   louvor: "🎶",
   devocional: "🙏",
   pausa: "☕",
+  testemunho: "🗣️",
 };
 const KIND_LABEL = {
   palestra: "Palestra",
@@ -13,6 +14,7 @@ const KIND_LABEL = {
   louvor: "Louvor",
   devocional: "Devocional",
   pausa: "Intervalo",
+  testemunho: "Testemunho",
 };
 
 const STORE_KEY = "florescer2026_roteiro";
@@ -46,6 +48,7 @@ function saveChosen() {
     /* modo privado / storage cheio — mantém em memória na sessão */
   }
   updateMineCount();
+  scheduleNotifications();
 }
 function updateMineCount() {
   el("mine-count").textContent = chosen.size;
@@ -59,6 +62,19 @@ function findSession(sid) {
 }
 function esc(str) {
   return String(str).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function initials(name) {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+// Foto do palestrante, avatar com iniciais (sem foto) ou ícone do tipo de sessão.
+function mediaFor(sp, kind, size) {
+  const cls = size === "hero" ? "s-icon" : "card-icon";
+  if (sp && sp.photo) {
+    const classAttr = size === "hero" ? "" : ` class="card-photo"`;
+    return `<img${classAttr} src="${sp.photo}" alt="${esc(sp.name)}" loading="lazy" />`;
+  }
+  if (sp) return `<div class="${cls} avatar">${esc(initials(sp.name))}</div>`;
+  return `<div class="${cls} ${kind}">${KIND_ICON[kind] || "•"}</div>`;
 }
 // Chave única do horário (dia + hora) — usada para detectar simultâneas.
 function slotKeyOf(found) {
@@ -103,9 +119,7 @@ function sessionCard(s, isSimul) {
   const room = ROOMS[s.room];
   const isChosen = chosen.has(s.id);
   const canPick = s.kind === "palestra"; // só palestras entram no roteiro
-  const media = sp
-    ? `<img class="card-photo" src="${sp.photo}" alt="${esc(sp.name)}" loading="lazy" />`
-    : `<div class="card-icon ${s.kind}">${KIND_ICON[s.kind] || "•"}</div>`;
+  const media = mediaFor(sp, s.kind, "card");
 
   const pickBtn = canPick
     ? `<button class="card-pick" data-pick="${s.id}" aria-label="Adicionar ao meu roteiro">${isChosen ? "♥" : "♡"}</button>`
@@ -195,7 +209,7 @@ function renderMine() {
     const room = ROOMS[session.room];
     html += `
       <div class="card chosen" data-open="${session.id}">
-        ${sp ? `<img class="card-photo" src="${sp.photo}" alt="${esc(sp.name)}" loading="lazy" />` : `<div class="card-icon">${KIND_ICON[session.kind]}</div>`}
+        ${mediaFor(sp, session.kind, "card")}
         <div class="card-main">
           <div class="card-title">${esc(session.title)}</div>
           ${sp ? `<div class="card-speaker">${esc(sp.name)}</div>` : ""}
@@ -233,9 +247,7 @@ function openSheet(sid) {
   // sessões simultâneas no mesmo horário (outras palestras)
   const simulOthers = slot.sessions.filter((o) => o.id !== s.id && o.kind === "palestra");
 
-  const hero = sp
-    ? `<img src="${sp.photo}" alt="${esc(sp.name)}" />`
-    : `<div class="s-icon">${KIND_ICON[s.kind] || "✿"}</div>`;
+  const hero = mediaFor(sp, s.kind, "hero");
 
   let html = `
     <div class="sheet-hero">
@@ -272,7 +284,7 @@ function openSheet(sid) {
       const osp = o.speaker ? SPEAKERS[o.speaker] : null;
       html += `
         <div class="card" data-open="${o.id}" style="margin-bottom:8px;">
-          ${osp ? `<img class="card-photo" src="${osp.photo}" alt="">` : `<div class="card-icon">${KIND_ICON[o.kind]}</div>`}
+          ${mediaFor(osp, o.kind, "card")}
           <div class="card-main">
             <div class="card-title" style="font-size:14px;">${esc(o.title)}</div>
             ${osp ? `<div class="card-speaker">${esc(osp.name)}</div>` : ""}
@@ -400,6 +412,179 @@ el("sheet-backdrop").addEventListener("click", (e) => {
   if (e.target === el("sheet-backdrop")) closeSheet();
 });
 
+/* ---------- lembretes locais (notificações) ----------
+   Como o site é hospedado no GitHub Pages (estático, sem servidor de push),
+   não é possível enviar notificações push reais. Em vez disso, agendamos
+   notificações LOCAIS no próprio dispositivo enquanto o app/aba estiver
+   aberto (em primeiro ou segundo plano), usando a Notification API + o
+   Service Worker para exibi-las. Isso não funciona com o navegador
+   totalmente fechado — é a limitação de uma hospedagem estática. */
+
+const NOTIFY_KEY = "florescer2026_notify_on";
+const NOTIFY_LEAD_MIN = 15; // avisa X minutos antes da sessão
+const MAX_TIMEOUT = 2147483647; // limite de 32 bits do setTimeout
+
+let notifyTimers = [];
+
+function notifySupported() {
+  return "Notification" in window;
+}
+function notifyEnabled() {
+  return notifySupported() && localStorage.getItem(NOTIFY_KEY) === "1" && Notification.permission === "granted";
+}
+
+// Data/hora real de início de uma sessão, combinando o dia (iso) com o horário do slot.
+function sessionStart(found) {
+  return new Date(`${found.day.iso}T${found.slot.time}:00`);
+}
+
+// setTimeout tem limite de ~24.8 dias; encadeia timeouts para datas mais distantes.
+function scheduleAt(date, cb) {
+  const delay = date.getTime() - Date.now();
+  if (delay <= 0) return null;
+  if (delay > MAX_TIMEOUT) {
+    return setTimeout(() => scheduleAt(date, cb), MAX_TIMEOUT);
+  }
+  return setTimeout(cb, delay);
+}
+
+function fireNotification(found) {
+  const { session: s, slot, day } = found;
+  const sp = s.speaker ? SPEAKERS[s.speaker] : null;
+  const title = `Em breve · ${s.title}`;
+  const room = ROOMS[s.room];
+  const body = `${slot.time} · ${esc(day.label)}${sp ? " · " + sp.name : ""}${room ? " · " + room.short : ""}`;
+  const opts = {
+    body,
+    icon: "icons/icon-192.png",
+    badge: "icons/icon-192.png",
+    tag: "florescer-" + s.id,
+    data: { day: day.id, sid: s.id },
+  };
+  navigator.serviceWorker && navigator.serviceWorker.getRegistration
+    ? navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg) reg.showNotification(title, opts);
+        else new Notification(title, opts);
+      })
+    : new Notification(title, opts);
+}
+
+// Sessões a lembrar: tudo que está no "Meu Roteiro" + sessões marcadas com notify:true.
+function sessionsToNotify() {
+  const out = [];
+  const seen = new Set();
+  SCHEDULE.forEach((day) =>
+    day.slots.forEach((slot) =>
+      slot.sessions.forEach((s) => {
+        if (chosen.has(s.id) || s.notify) {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            out.push({ session: s, slot, day });
+          }
+        }
+      })
+    )
+  );
+  return out;
+}
+
+function clearNotifyTimers() {
+  notifyTimers.forEach((t) => clearTimeout(t));
+  notifyTimers = [];
+}
+
+function scheduleNotifications() {
+  clearNotifyTimers();
+  if (!notifyEnabled()) return;
+  const now = Date.now();
+  sessionsToNotify().forEach((found) => {
+    const start = sessionStart(found);
+    const fireAt = new Date(start.getTime() - NOTIFY_LEAD_MIN * 60000);
+    if (fireAt.getTime() <= now) return; // já passou (ou está a menos do que o aviso)
+    const t = scheduleAt(fireAt, () => fireNotification(found));
+    if (t) notifyTimers.push(t);
+  });
+}
+
+function updateNotifyButton() {
+  const btn = el("btn-notify");
+  if (!btn) return;
+  if (!notifySupported()) {
+    btn.hidden = true;
+    return;
+  }
+  btn.hidden = false;
+  btn.classList.toggle("active", notifyEnabled());
+  btn.setAttribute("aria-pressed", notifyEnabled() ? "true" : "false");
+}
+
+async function toggleNotify() {
+  if (!notifySupported()) return;
+
+  if (notifyEnabled()) {
+    localStorage.setItem(NOTIFY_KEY, "0");
+    clearNotifyTimers();
+    updateNotifyButton();
+    return;
+  }
+
+  if (Notification.permission === "denied") {
+    openNotifyBlocked();
+    return;
+  }
+
+  if (Notification.permission === "granted") {
+    localStorage.setItem(NOTIFY_KEY, "1");
+    scheduleNotifications();
+    updateNotifyButton();
+    return;
+  }
+
+  openNotifyPrimer();
+}
+
+function openNotifyPrimer() {
+  el("notify-body").innerHTML = `
+    <h3 id="notify-title">Ativar lembretes?</h3>
+    <p class="i-text">Você recebe um aviso ${NOTIFY_LEAD_MIN} minutos antes de cada palestra do seu roteiro (e dos momentos principais do evento). Funciona enquanto o app estiver aberto no seu celular — mantenha-o instalado e em segundo plano durante o Florescer.</p>
+    <button class="install-primary" id="notify-go">🔔 Ativar lembretes</button>
+    <button class="install-secondary" id="notify-later">Agora não</button>`;
+  el("notify-modal").hidden = false;
+  el("notify-go").addEventListener("click", async () => {
+    let perm;
+    try { perm = await Notification.requestPermission(); } catch (_) { perm = "denied"; }
+    closeNotify();
+    if (perm === "granted") {
+      localStorage.setItem(NOTIFY_KEY, "1");
+      scheduleNotifications();
+    }
+    updateNotifyButton();
+  });
+  el("notify-later").addEventListener("click", closeNotify);
+}
+
+function openNotifyBlocked() {
+  el("notify-body").innerHTML = `
+    <h3 id="notify-title">Notificações bloqueadas</h3>
+    <p class="i-text">Seu navegador está bloqueando notificações para este site. Para ativar os lembretes, permita notificações para o Florescer nas configurações do navegador.</p>
+    <button class="install-secondary" id="notify-later">Entendi</button>`;
+  el("notify-modal").hidden = false;
+  el("notify-later").addEventListener("click", closeNotify);
+}
+
+function closeNotify() {
+  el("notify-modal").hidden = true;
+}
+
+const notifyModalEl = document.getElementById("notify-modal");
+if (notifyModalEl) {
+  notifyModalEl.addEventListener("click", (e) => {
+    if (e.target === notifyModalEl) closeNotify();
+  });
+}
+const btnNotifyEl = document.getElementById("btn-notify");
+if (btnNotifyEl) btnNotifyEl.addEventListener("click", toggleNotify);
+
 /* ---------- abrir em tela cheia / instalar ---------- */
 let deferredPrompt = null; // evento de instalação do Android/Chrome
 
@@ -520,6 +705,8 @@ function boot() {
   updateMineCount();
   render();
   maybeShowInstall();
+  updateNotifyButton();
+  scheduleNotifications();
   setTimeout(() => el("splash").classList.add("hide"), 1100);
 }
 boot();

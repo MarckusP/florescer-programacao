@@ -39,6 +39,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="btn-notify" class="icon-btn" type="button" aria-label="Ativar lembretes" aria-pressed="false" hidden>🔔</button>
         <button id="btn-fullscreen" class="icon-btn" type="button" aria-label="Abrir em tela cheia" hidden>⛶</button>
         <button id="tab-roteiro" class="mine-btn" type="button" aria-label="Meu roteiro">
           <span class="heart">♥</span>
@@ -67,6 +68,14 @@
     <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
       <div class="install-flower">⏱</div>
       <div id="confirm-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal: ativar lembretes locais -->
+  <div id="notify-modal" class="install-backdrop" hidden>
+    <div class="install-card" role="dialog" aria-modal="true" aria-labelledby="notify-title">
+      <div class="install-flower">🔔</div>
+      <div id="notify-body"></div>
     </div>
   </div>
 
